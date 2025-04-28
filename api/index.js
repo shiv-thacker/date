@@ -42,9 +42,9 @@ app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
 
-const dynamoDbClient = new DynamoDBClient({region: 'us-east-2'});
+const dynamoDbClient = new DynamoDBClient({region: 'eu-north-1'});
 
-const cognitoClient = new CognitoIdentityProviderClient({region: 'us-east-2'});
+const cognitoClient = new CognitoIdentityProviderClient({region: 'eu-north-1'});
 
 const server = http.createServer(app);
 
@@ -111,7 +111,7 @@ app.post('/sendOtp', async (req, res) => {
   }
 
   const signUpParams = {
-    ClientId: '',
+    ClientId: '75efeui68oqcrq7ig4u0gjuv0k',
     Username: email,
     Password: password,
     UserAttributes: [{Name: 'email', Value: email}],
@@ -132,7 +132,7 @@ app.post('/resendOtp', async (req, res) => {
   const {email} = req.body;
 
   const resendParams = {
-    ClientId: '',
+    ClientId: '75efeui68oqcrq7ig4u0gjuv0k',
     Username: email,
   };
 
@@ -150,7 +150,7 @@ app.post('/confirmSignup', async (req, res) => {
   const {email, otpCode} = req.body;
 
   const confirmParams = {
-    ClientId: '',
+    ClientId: '75efeui68oqcrq7ig4u0gjuv0k',
     Username: email,
     ConfirmationCode: otpCode,
   };
@@ -482,7 +482,7 @@ app.post('/login', async (req, res) => {
 
   const authParams = {
     AuthFlow: 'USER_PASSWORD_AUTH',
-    ClientId: '',
+    ClientId: '75efeui68oqcrq7ig4u0gjuv0k',
     AuthParameters: {
       USERNAME: email,
       PASSWORD: password,

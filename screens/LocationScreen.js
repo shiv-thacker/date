@@ -6,6 +6,8 @@ import {
   Platform,
   TouchableOpacity,
   Image,
+  PermissionsAndroid,
+  PlatformC,
 } from 'react-native';
 import React, {useEffect, useState} from 'react';
 import Ionicons from '@react-native-vector-icons/ionicons';
@@ -13,14 +15,39 @@ import MaterialDesignIcons from '@react-native-vector-icons/material-design-icon
 import MapView, {Marker} from 'react-native-maps';
 import Geolocation from '@react-native-community/geolocation';
 import {useNavigation} from '@react-navigation/native';
-import { saveRegistrationProgress } from '../utils/registrationUtils';
+import {saveRegistrationProgress} from '../utils/registrationUtils';
 
 const LocationScreen = () => {
+  useEffect(() => {
+    if (Platform.OS === 'android') {
+      requestLocationPermission();
+    }
+  }, []);
+
+  const requestLocationPermission = async () => {
+    try {
+      const granted = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+        {
+          title: 'Location Permission',
+          message: 'We need access to your location.',
+        },
+      );
+      if (granted === PermissionsAndroid.RESULTS.GRANTED) {
+        getLocation();
+      } else {
+        console.log('Location permission denied');
+      }
+    } catch (err) {
+      console.warn(err);
+    }
+  };
+
   const [region, setRegion] = useState('');
   const navigation = useNavigation();
   const [location, setLocation] = useState('Loading...');
 
-  useEffect(() => {
+  const getLocation = () => {
     Geolocation.getCurrentPosition(
       position => {
         const {latitude, longitude} = position.coords;
@@ -40,10 +67,34 @@ const LocationScreen = () => {
       error => console.log('Error fetching location:', error),
       {enableHighAccuracy: true, timeout: 15000, maximumAge: 10000},
     );
+  };
+
+  useEffect(() => {
+    if (Platform.OS == 'ios') {
+      Geolocation.getCurrentPosition(
+        position => {
+          const {latitude, longitude} = position.coords;
+
+          const initialRegion = {
+            latitude,
+            longitude,
+            latitudeDelta: 0.01,
+            longitudeDelta: 0.01,
+          };
+
+          setRegion(initialRegion);
+
+          // setMarkerCoordinate({latitude, longitude});
+          fetchAddress(latitude, longitude);
+        },
+        error => console.log('Error fetching location:', error),
+        {enableHighAccuracy: true, timeout: 15000, maximumAge: 10000},
+      );
+    }
   }, []);
   const fetchAddress = (latitude, longitude) => {
     fetch(
-      `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=AIzaSyDfr7eubWiWHSMt_3DGir2Fcx4BN1NtoTg`,
+      `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=AIzaSyDXC5pO40HLjZJNBl76Nxu55zShBo-fBSo`,
     )
       .then(response => response.json())
       .then(data => {
@@ -66,7 +117,7 @@ const LocationScreen = () => {
   };
 
   const handleNext = () => {
-    saveRegistrationProgress('Location',{location});
+    saveRegistrationProgress('Location', {location});
     navigation.navigate('Gender');
   };
   console.log('Location', location);

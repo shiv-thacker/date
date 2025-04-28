@@ -1,11 +1,11 @@
 import {DynamoDBClient} from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, PutCommand} from '@aws-sdk/lib-dynamodb';
+import {DynamoDBDocumentClient, PutCommand} from '@aws-sdk/lib-dynamodb';
 
 const client = new DynamoDBClient({
-  region: 'us-east-2',
+  region: 'eu-north-1',
   credentials: {
-    accessKeyId: '', 
-    secretAccessKey: '', 
+    accessKeyId: 'AKIA4RCAN6X3KFBVGCR6',
+    secretAccessKey: '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',
   },
 });
 

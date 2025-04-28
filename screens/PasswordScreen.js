@@ -13,9 +13,9 @@ import MaterialDesignIcons from '@react-native-vector-icons/material-icons';
 import Ionicons from '@react-native-vector-icons/ionicons';
 import {useState} from 'react';
 import {useNavigation, useRoute} from '@react-navigation/native';
-import { saveRegistrationProgress } from '../utils/registrationUtils';
+import {saveRegistrationProgress} from '../utils/registrationUtils';
 import axios from 'axios';
-import { BASE_URL } from '../urls/url';
+import {BASE_URL} from '../urls/url';
 
 const PasswordScreen = () => {
   const [password, setPassword] = useState('');
@@ -23,25 +23,24 @@ const PasswordScreen = () => {
   const navigation = useNavigation();
   const email = route?.params?.email;
   const handleSendOtp = async () => {
-    if(!email){
+    if (!email) {
       return;
     }
 
-    try{
-      const response = await axios.post(`${BASE_URL}/sendOtp`,{
+    try {
+      const response = await axios.post(`${BASE_URL}/sendOtp`, {
         email,
-        password
+        password,
       });
       console.log(response.data.message);
       navigation.navigate('Otp', {email});
-
-    } catch(error){
-      console.log("Error sending the OTP",error)
+    } catch (error) {
+      console.error('Error sending the OTP', error);
     }
-  }
+  };
   const handleNext = () => {
-    if(password.trim() !== ''){
-      saveRegistrationProgress('Password',{password});
+    if (password.trim() !== '') {
+      saveRegistrationProgress('Password', {password});
     }
     // navigation.navigate('Otp', {email});
 
