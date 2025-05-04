@@ -16,6 +16,7 @@ import EvilIcons from '@react-native-vector-icons/evil-icons';
 import MaterialIcons from '@react-native-vector-icons/material-icons';
 import { useNavigation } from '@react-navigation/native';
 import { getRegistrationProgress, saveRegistrationProgress } from '../utils/registrationUtils';
+import { hp,wp } from '../utils/Dimension';
 
 const PhotoScreen = () => {
   const [imageUrls, setImageUrls] = useState(['', '', '', '', '', '']);
@@ -49,7 +50,7 @@ const PhotoScreen = () => {
         flex: 1,
         backgroundColor: 'white',
       }}>
-      <View style={{marginTop: 80, marginHorizontal: 20}}>
+      <View style={{marginTop: hp(5), marginHorizontal: 20}}>
         <View style={{flexDirection: 'row', alignItems: 'center'}}>
           <View
             style={{
@@ -93,7 +94,7 @@ const PhotoScreen = () => {
                   alignItems: 'center',
                   borderStyle: 'dashed',
                   borderRadius: 10,
-                  height: 100,
+                  height: hp(12.5),
                 }}
                 key={index}>
                 {url ? (
@@ -126,7 +127,7 @@ const PhotoScreen = () => {
                   alignItems: 'center',
                   borderStyle: 'dashed',
                   borderRadius: 10,
-                  height: 100,
+                  height: hp(12.5),
                 }}
                 key={index}>
                 {url ? (
@@ -160,7 +161,7 @@ const PhotoScreen = () => {
             </Text>
           </View>
 
-          <View style={{marginTop: 25}}>
+          <View style={{marginTop: hp(2)}}>
             <Text>Add a picture of yourself</Text>
 
             <View
@@ -182,7 +183,7 @@ const PhotoScreen = () => {
               <TextInput
                 value={imageUrl}
                 onChangeText={text => setImageUrl(text)}
-                style={{color: 'gray', marginVertical: 10, width: 300}}
+                style={{color: 'gray', marginVertical: 10, width:300}}
                 placeholder="Enter your image url"
               />
             </View>

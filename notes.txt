@@ -1,0 +1,11 @@
+const client = new DynamoDBClient({
+  region: 'eu-north-1',
+  credentials: {
+    accessKeyId: 'AKIA4RCAN6X3KFBVGCR6',
+    secretAccessKey: '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',
+  },
+});
+ClientId: '75efeui68oqcrq7ig4u0gjuv0k',
+google apikey :- AIzaSyDXC5pO40HLjZJNBl76Nxu55zShBo-fBSo
+also change base_url
+enableHighAccuracy: false in locationscreen

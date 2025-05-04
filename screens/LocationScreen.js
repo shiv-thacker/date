@@ -65,7 +65,7 @@ const LocationScreen = () => {
         fetchAddress(latitude, longitude);
       },
       error => console.log('Error fetching location:', error),
-      {enableHighAccuracy: true, timeout: 15000, maximumAge: 10000},
+      {enableHighAccuracy: false, timeout: 15000, maximumAge: 10000},
     );
   };
 
@@ -160,8 +160,8 @@ const LocationScreen = () => {
           Where do you live?
         </Text>
 
-        <MapView
-          style={{width: '100%', height: 500, marginTop: 20, borderRadius: 5}}
+        {region &&<MapView
+          style={{width: '100%', height: '60%', marginTop: 20, borderRadius: 5}}
           region={region}>
           {region && (
             <Marker
@@ -187,7 +187,7 @@ const LocationScreen = () => {
               </View>
             </Marker>
           )}
-        </MapView>
+        </MapView>}
 
         <TouchableOpacity
           onPress={handleNext}
