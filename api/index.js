@@ -166,21 +166,23 @@ app.post('/confirmSignup', async (req, res) => {
 });
 
 app.get('/matches', async (req, res) => {
-  const { userId } = req.query;
+  const {userId} = req.query;
 
   try {
     if (!userId) {
-      return res.status(400).json({ message: 'UserId is required' });
+      return res.status(400).json({message: 'UserId is required'});
     }
 
     // Get current user
-    const userResult = await docClient.send(new GetCommand({
-      TableName: 'usercollection',
-      Key: { userId },
-    }));
+    const userResult = await docClient.send(
+      new GetCommand({
+        TableName: 'usercollection',
+        Key: {userId},
+      }),
+    );
 
     if (!userResult.Item) {
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(404).json({message: 'User not found'});
     }
 
     const user = userResult.Item;
@@ -191,9 +193,11 @@ app.get('/matches', async (req, res) => {
       ...(user.likedProfiles || []).map(lp => lp.likedUserId),
     ]);
 
-    const scanResult = await docClient.send(new ScanCommand({
-      TableName: 'usercollection',
-    }));
+    const scanResult = await docClient.send(
+      new ScanCommand({
+        TableName: 'usercollection',
+      }),
+    );
 
     const filteredMatches = (scanResult.Items || []).filter(item => {
       const notSameUser = item.userId !== user.userId;
@@ -203,32 +207,32 @@ app.get('/matches', async (req, res) => {
     });
 
     const matches = filteredMatches.map(item => ({
-      userId: item.userId,
-      email: item.email,
-      firstName: item.firstName,
-      gender: item.gender,
-      location: item.location,
-      lookingFor: item.lookingFor,
-      dateOfBirth: item.dateOfBirth,
-      hometown: item.hometown,
-      type: item.type,
-      jobTitle: item.jobTitle,
-      workPlace: item.workPlace,
-      imageUrls: item.imageUrls || [],
-      prompts: (item.prompts || []).map(prompt => ({
-        question: prompt.question,
-        answer: prompt.answer,
-      })),
+      userId: item?.userId,
+      email: item?.email,
+      firstName: item?.firstName,
+      gender: item?.gender,
+      location: item?.location,
+      lookingFor: item?.lookingFor,
+      dateOfBirth: item?.dateOfBirth,
+      hometown: item?.hometown,
+      type: item?.type,
+      jobTitle: item?.jobTitle,
+      workPlace: item?.workPlace,
+      imageUrls: item?.imageUrls || [],
+      prompts: Array.isArray(item?.prompts)
+        ? item.prompts.map(prompt => ({
+            question: prompt?.question,
+            answer: prompt?.answer,
+          }))
+        : [],
     }));
-
-    res.status(200).json({ matches });
+    console.error('api calling', matches);
+    res.status(200).json({matches});
   } catch (error) {
     console.error('Error fetching matches', error);
-    res.status(500).json({ message: 'Internal server error' });
+    res.status(500).json({message: 'Internal server error'});
   }
 });
-
-
 
 app.get('/user-info', async (req, res) => {
   const {userId} = req.query;

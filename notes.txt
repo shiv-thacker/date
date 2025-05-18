@@ -9,3 +9,14 @@ ClientId: '75efeui68oqcrq7ig4u0gjuv0k',
 google apikey :- AIzaSyDXC5pO40HLjZJNBl76Nxu55zShBo-fBSo
 also change base_url
 enableHighAccuracy: false in locationscreen
+
+change dynamoDbClient with docClient in get-userinfo & matches api. now it's properly working.
+
+change 
+
+prompts: Array.isArray(item?.prompts)
+        ? item.prompts.map(prompt => ({
+            question: prompt?.question,
+            answer: prompt?.answer,
+          }))
+        : [],
