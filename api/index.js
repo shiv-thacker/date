@@ -199,13 +199,23 @@ app.get('/matches', async (req, res) => {
       }),
     );
 
+    // ✅ Filter out current user and already matched/liked users
     const filteredMatches = (scanResult.Items || []).filter(item => {
-      const notSameUser = item.userId !== user.userId;
-      const notMatched = !excludeIds.has(item.userId);
-      const genderMatch = user.datingPreferences?.includes(item.gender);
+      const itemUserId = item.userId?.S || item.userId;
+      const itemGender = item.gender?.S || item.gender;
+
+      // ✅ Exclude self
+      const notSameUser = itemUserId !== user.userId;
+
+      // ✅ Exclude previously matched/liked users
+      const notMatched = !excludeIds.has(itemUserId);
+
+      // ✅ Match dating preferences (optional)
+      const genderMatch = user.datingPreferences?.includes(itemGender);
+
       return notSameUser && notMatched && genderMatch;
     });
-
+    console.error('user.userId', user.userId);
     const matches = filteredMatches.map(item => ({
       userId: item?.userId,
       email: item?.email,
