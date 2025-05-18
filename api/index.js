@@ -166,84 +166,69 @@ app.post('/confirmSignup', async (req, res) => {
 });
 
 app.get('/matches', async (req, res) => {
-  const {userId} = req.query;
-
-  // console.log('user', userId);
+  const { userId } = req.query;
 
   try {
     if (!userId) {
-      return res.status(400).json({message: 'UserId is required'});
+      return res.status(400).json({ message: 'UserId is required' });
     }
 
-    const userParams = {
-      TableName: 'users',
-      Key: {userId},
-    };
-
-    const userResult = await dynamoDbClient.send(new GetCommand(userParams));
-
-    if (!userResult.Item) {
-      return res.status(404).json({message: 'User not found'});
-    }
-
-    const user = {
-      userId: userResult.Item.userId,
-      gender: userResult.Item.gender,
-      datingPreferences:
-        userResult.Item.datingPreferences?.map(pref => pref) || [],
-      matches: userResult.Item.matches?.map(match => match) || [],
-      likedProfiles:
-        userResult?.Item.likedProfiles?.map(lp => lp.likedUserId) || [],
-    };
-
-    const genderFilter = user?.datingPreferences?.map(g => ({S: g}));
-    const excludeIds = [
-      ...user.matches,
-      ...user.likedProfiles,
-      user.userId,
-    ].map(id => ({S: id}));
-
-    const scanParams = {
-      TableName: 'users',
-      FilterExpression:
-        'userId <> :currentUserId AND (contains(:genderPref,gender)) AND NOT contains(:excludedIds,userId)',
-      ExpressionAttributeValues: {
-        ':currentUserId': {S: user.userId},
-        ':genderPref': {
-          L: genderFilter.length > 0 ? genderFilter : [{S: 'None'}],
-        },
-        ':excludedIds': {L: excludeIds},
-      },
-    };
-
-    const scanResult = await dynamoDbClient.send(new ScanCommand(scanParams));
-
-    const matches = scanResult.Items.map(item => ({
-      userId: item?.userId.S,
-      email: item?.email.S,
-      firstName: item?.firstName.S,
-      gender: item?.gender.S,
-      location: item?.location.S,
-      lookingFor: item?.lookingFor.S,
-      dateOfBirth: item.dateOfBirth.S,
-      hometown: item.hometown.S,
-      type: item.type.S,
-      jobTitle: item.jobTitle.S,
-      workPlace: item.workPlace.S,
-      imageUrls: item.imageUrls?.L.map(url => url.S) || [],
-      prompts:
-        item?.prompts.L.map(prompt => ({
-          question: prompt.M.question.S,
-          answer: prompt.M.answer.S,
-        })) || [],
+    // Get current user
+    const userResult = await docClient.send(new GetCommand({
+      TableName: 'usercollection',
+      Key: { userId },
     }));
 
-    res.status(200).json({matches});
+    if (!userResult.Item) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const user = userResult.Item;
+
+    const excludeIds = new Set([
+      user.userId,
+      ...(user.matches || []),
+      ...(user.likedProfiles || []).map(lp => lp.likedUserId),
+    ]);
+
+    const scanResult = await docClient.send(new ScanCommand({
+      TableName: 'usercollection',
+    }));
+
+    const filteredMatches = (scanResult.Items || []).filter(item => {
+      const notSameUser = item.userId !== user.userId;
+      const notMatched = !excludeIds.has(item.userId);
+      const genderMatch = user.datingPreferences?.includes(item.gender);
+      return notSameUser && notMatched && genderMatch;
+    });
+
+    const matches = filteredMatches.map(item => ({
+      userId: item.userId,
+      email: item.email,
+      firstName: item.firstName,
+      gender: item.gender,
+      location: item.location,
+      lookingFor: item.lookingFor,
+      dateOfBirth: item.dateOfBirth,
+      hometown: item.hometown,
+      type: item.type,
+      jobTitle: item.jobTitle,
+      workPlace: item.workPlace,
+      imageUrls: item.imageUrls || [],
+      prompts: (item.prompts || []).map(prompt => ({
+        question: prompt.question,
+        answer: prompt.answer,
+      })),
+    }));
+
+    res.status(200).json({ matches });
   } catch (error) {
-    console.log('Error fetching matches', error);
-    res.status(500).json({message: 'Internal server error'});
+    console.error('Error fetching matches', error);
+    res.status(500).json({ message: 'Internal server error' });
   }
 });
+
+
 
 app.get('/user-info', async (req, res) => {
   const {userId} = req.query;
@@ -256,11 +241,11 @@ app.get('/user-info', async (req, res) => {
 
   try {
     const params = {
-      TableName: 'users',
+      TableName: 'usercollection',
       Key: {userId},
     };
     const command = new GetCommand(params);
-    const result = await dynamoDbClient.send(command);
+    const result = await docClient.send(command);
 
     if (!result.Item) {
       return res.status(404).json({message: 'User not found'});
@@ -310,7 +295,7 @@ app.post('/like-profile', authenticateToken, async (req, res) => {
 
   try {
     const userParams = {
-      TableName: 'users',
+      TableName: 'usercollection',
       Key: {userId},
     };
 
@@ -333,7 +318,7 @@ app.post('/like-profile', authenticateToken, async (req, res) => {
 
     if (timeSinceLastUpdate >= oneDay) {
       const resetParams = {
-        TableName: 'users',
+        TableName: 'usercollection',
         Key: {userId},
         UpdateExpression: 'SET likes = :maxLikes, likesLastUpdated = :now',
         ExpressionAttributeValues: {
@@ -354,7 +339,7 @@ app.post('/like-profile', authenticateToken, async (req, res) => {
     const newLikes = likesRemaining - 1;
 
     const decrementLikesParams = {
-      TableName: 'users',
+      TableName: 'usercollection',
       Key: {userId},
       UpdateExpression: 'SET likes = :newLikes',
       ExpressionAttributeValues: {
@@ -384,7 +369,7 @@ app.post('/like-profile', authenticateToken, async (req, res) => {
 
     //step 1
     const updatedReceivedLikesParams = {
-      TableName: 'users',
+      TableName: 'usercollection',
       Key: {userId: likedUserId},
       UpdateExpression:
         'SET receivedLikes = list_append(if_not_exists(receivedLikes, :empty_list), :newLike)',
@@ -400,7 +385,7 @@ app.post('/like-profile', authenticateToken, async (req, res) => {
     //step 2
 
     const updatedLikedParams = {
-      TableName: 'users',
+      TableName: 'usercollection',
       Key: {userId},
       UpdateExpression:
         'SET likedProfiles = list_append(if_not_exists(likedProfiles, :empty_list), :likedUserId)',
@@ -427,7 +412,7 @@ app.get('/received-likes/:userId', authenticateToken, async (req, res) => {
 
   try {
     const params = {
-      TableName: 'users',
+      TableName: 'usercollection',
       Key: {userId: userId},
       ProjectionExpression: 'receivedLikes',
     };
@@ -444,7 +429,7 @@ app.get('/received-likes/:userId', authenticateToken, async (req, res) => {
     const enrichedLikes = await Promise.all(
       receivedLikes.map(async like => {
         const userParams = {
-          TableName: 'users',
+          TableName: 'usercollection',
           Key: {userId: like.userId},
           ProjectionExpression: 'userId, firstName, imageUrls, prompts',
         };
@@ -497,7 +482,7 @@ app.post('/login', async (req, res) => {
       authResult.AuthenticationResult;
 
     const userParams = {
-      TableName: 'users',
+      TableName: 'usercollection',
       IndexName: 'email-index',
       KeyConditionExpression: 'email = :emailValue',
       ExpressionAttributeValues: {
@@ -529,7 +514,7 @@ app.post('/login', async (req, res) => {
 async function getIndexToRemove(selectedUserId, currentUserId) {
   const result = await docClient.send(
     new GetCommand({
-      TableName: 'users',
+      TableName: 'usercollection',
       Key: {userId: selectedUserId},
       ProjectionExpression: 'likedProfiles',
     }),
@@ -551,7 +536,7 @@ app.post('/create-match', authenticateToken, async (req, res) => {
 
     const userResponse = await docClient.send(
       new GetCommand({
-        TableName: 'users',
+        TableName: 'usercollection',
         Key: {userId: currentUserId},
       }),
     );
@@ -578,7 +563,7 @@ app.post('/create-match', authenticateToken, async (req, res) => {
 
     await docClient.send(
       new UpdateCommand({
-        TableName: 'users',
+        TableName: 'usercollection',
         Key: {userId: selectedUserId},
         UpdateExpression: `
         SET #matches = list_append(if_not_exists(#matches, :emptyList), :currentUser)
@@ -597,7 +582,7 @@ app.post('/create-match', authenticateToken, async (req, res) => {
 
     await docClient.send(
       new UpdateCommand({
-        TableName: 'users',
+        TableName: 'usercollection',
         Key: {userId: currentUserId},
         UpdateExpression:
           'SET #matches = list_append(if_not_exists(#matches, :emptyList), :selectedUser)',
@@ -613,7 +598,7 @@ app.post('/create-match', authenticateToken, async (req, res) => {
 
     await docClient.send(
       new UpdateCommand({
-        TableName: 'users',
+        TableName: 'usercollection',
         Key: {userId: currentUserId},
         UpdateExpression: `REMOVE #receivedLikes[${indexToRemove}]`,
         ExpressionAttributeNames: {
@@ -634,7 +619,7 @@ app.get('/get-matches/:userId', authenticateToken, async (req, res) => {
 
     const userResult = await docClient.send(
       new GetCommand({
-        TableName: 'users',
+        TableName: 'usercollection',
         Key: {userId},
         ProjectionExpression: 'matches',
       }),
@@ -847,7 +832,7 @@ app.post('/subscribe', authenticateToken, async (req, res) => {
     await dynamoDbClient.send(new PutItemCommand(params));
 
     const updateParams = {
-      TableName: 'users',
+      TableName: 'usercollection',
       Key: {userId: {S: userId}},
       UpdateExpression:
         'SET subscriptions = list_append(if_not_exists(subscriptions, :empty_list), :new_subscription)',
@@ -886,7 +871,7 @@ app.post('/payment-success', async (req, res) => {
     const {userId, rosesToAdd} = req.body;
 
     const userParams = {
-      TableName: 'users',
+      TableName: 'usercollection',
       Key: {userId},
     };
     const userData = await dynamoDbClient.send(new GetCommand(userParams));
@@ -901,7 +886,7 @@ app.post('/payment-success', async (req, res) => {
     const newRoses = Number(roses) + Number(rosesToAdd);
 
     const updatedRoseParams = {
-      TableName: 'users',
+      TableName: 'usercollection',
       Key: {userId},
       UpdateExpression: 'SET roses = :newRoses',
       ExpressionAttributeValues: {
@@ -945,7 +930,7 @@ app.post('/send-rose', authenticateToken, async (req, res) => {
 
   try {
     const userParams = {
-      TableName: 'users',
+      TableName: 'usercollection',
       Key: {userId},
     };
 
@@ -966,7 +951,7 @@ app.post('/send-rose', authenticateToken, async (req, res) => {
     const newRosesCount = rosesRemaining - 1;
 
     const decrementRosesParams = {
-      TableName: 'users',
+      TableName: 'usercollection',
       Key: {userId},
       UpdateExpression: 'SET roses = :newRoses',
       ExpressionAttributeValues: {
@@ -1002,7 +987,7 @@ app.post('/send-rose', authenticateToken, async (req, res) => {
 
     // Step 1: Update the liked user's 'receivedLikes' array
     const updateReceivedLikesParams = {
-      TableName: 'users',
+      TableName: 'usercollection',
       Key: {userId: likedUserId}, // Key for the liked user
       UpdateExpression:
         'SET receivedLikes = list_append(if_not_exists(receivedLikes, :empty_list), :newLike)',
@@ -1017,7 +1002,7 @@ app.post('/send-rose', authenticateToken, async (req, res) => {
 
     // Step 2: Update the current user's 'likedProfiles' array
     const updateLikedProfilesParams = {
-      TableName: 'users',
+      TableName: 'usercollection',
       Key: {userId}, // Key for the current user
       UpdateExpression:
         'SET likedProfiles = list_append(if_not_exists(likedProfiles, :empty_list), :likedUserId)',
