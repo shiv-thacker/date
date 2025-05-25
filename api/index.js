@@ -42,7 +42,13 @@ app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
 
-const dynamoDbClient = new DynamoDBClient({region: 'eu-north-1'});
+const dynamoDbClient = new DynamoDBClient({
+  region: 'eu-north-1',
+  credentials: {
+    accessKeyId: 'AKIA4RCAN6X3KFBVGCR6',
+    secretAccessKey: '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',
+  },
+});
 
 const cognitoClient = new CognitoIdentityProviderClient({region: 'eu-north-1'});
 
@@ -168,78 +174,79 @@ app.post('/confirmSignup', async (req, res) => {
 app.get('/matches', async (req, res) => {
   const {userId} = req.query;
 
+  // console.log('user', userId);
+
   try {
     if (!userId) {
       return res.status(400).json({message: 'UserId is required'});
     }
 
-    // Get current user
-    const userResult = await docClient.send(
-      new GetCommand({
-        TableName: 'usercollection',
-        Key: {userId},
-      }),
-    );
+    const userParams = {
+      TableName: 'usercollection',
+      Key: {userId},
+    };
+
+    const userResult = await dynamoDbClient.send(new GetCommand(userParams));
 
     if (!userResult.Item) {
       return res.status(404).json({message: 'User not found'});
     }
 
-    const user = userResult.Item;
+    const user = {
+      userId: userResult.Item.userId,
+      gender: userResult.Item.gender,
+      datingPreferences:
+        userResult.Item.datingPreferences?.map(pref => pref) || [],
+      matches: userResult.Item.matches?.map(match => match) || [],
+      likedProfiles:
+        userResult?.Item.likedProfiles?.map(lp => lp.likedUserId) || [],
+    };
 
-    const excludeIds = new Set([
+    const genderFilter = user?.datingPreferences?.map(g => ({S: g}));
+    const excludeIds = [
+      ...user.matches,
+      ...user.likedProfiles,
       user.userId,
-      ...(user.matches || []),
-      ...(user.likedProfiles || []).map(lp => lp.likedUserId),
-    ]);
+    ].map(id => ({S: id}));
 
-    const scanResult = await docClient.send(
-      new ScanCommand({
-        TableName: 'usercollection',
-      }),
-    );
+    const scanParams = {
+      TableName: 'users',
+      FilterExpression:
+        'userId <> :currentUserId AND (contains(:genderPref,gender)) AND NOT contains(:excludedIds,userId)',
+      ExpressionAttributeValues: {
+        ':currentUserId': {S: user.userId},
+        ':genderPref': {
+          L: genderFilter.length > 0 ? genderFilter : [{S: 'None'}],
+        },
+        ':excludedIds': {L: excludeIds},
+      },
+    };
 
-    // ✅ Filter out current user and already matched/liked users
-    const filteredMatches = (scanResult.Items || []).filter(item => {
-      const itemUserId = item.userId?.S || item.userId;
-      const itemGender = item.gender?.S || item.gender;
+    const scanResult = await dynamoDbClient.send(new ScanCommand(scanParams));
 
-      // ✅ Exclude self
-      const notSameUser = itemUserId !== user.userId;
-
-      // ✅ Exclude previously matched/liked users
-      const notMatched = !excludeIds.has(itemUserId);
-
-      // ✅ Match dating preferences (optional)
-      const genderMatch = user.datingPreferences?.includes(itemGender);
-
-      return notSameUser && notMatched && genderMatch;
-    });
-    console.error('user.userId', user.userId);
-    const matches = filteredMatches.map(item => ({
-      userId: item?.userId,
-      email: item?.email,
-      firstName: item?.firstName,
-      gender: item?.gender,
-      location: item?.location,
-      lookingFor: item?.lookingFor,
-      dateOfBirth: item?.dateOfBirth,
-      hometown: item?.hometown,
-      type: item?.type,
-      jobTitle: item?.jobTitle,
-      workPlace: item?.workPlace,
-      imageUrls: item?.imageUrls || [],
-      prompts: Array.isArray(item?.prompts)
-        ? item.prompts.map(prompt => ({
-            question: prompt?.question,
-            answer: prompt?.answer,
-          }))
-        : [],
+    const matches = scanResult.Items.map(item => ({
+      userId: item?.userId.S,
+      email: item?.email.S,
+      firstName: item?.firstName.S,
+      gender: item?.gender.S,
+      location: item?.location.S,
+      lookingFor: item?.lookingFor.S,
+      dateOfBirth: item.dateOfBirth.S,
+      hometown: item.hometown.S,
+      type: item.type.S,
+      jobTitle: item.jobTitle.S,
+      // workPlace: item.workPlace.S,
+      imageUrls: item.imageUrls?.L.map(url => url.S) || [],
+      prompts:
+        item?.prompts.L.map(prompt => ({
+          question: prompt.M.question.S,
+          answer: prompt.M.answer.S,
+        })) || [],
     }));
-    console.error('api calling', matches);
+
     res.status(200).json({matches});
   } catch (error) {
-    console.error('Error fetching matches', error);
+    console.log('Error fetching matches', error);
     res.status(500).json({message: 'Internal server error'});
   }
 });
@@ -259,7 +266,7 @@ app.get('/user-info', async (req, res) => {
       Key: {userId},
     };
     const command = new GetCommand(params);
-    const result = await docClient.send(command);
+    const result = await dynamoDbClient.send(command);
 
     if (!result.Item) {
       return res.status(404).json({message: 'User not found'});

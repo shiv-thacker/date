@@ -24,3 +24,17 @@ prompts: Array.isArray(item?.prompts)
 
         provided item?.userid?.S in matches api, because it gives in object userId{S : 'shdvcshjdvsjkhv}
         now need to check if it becuase i have used docClient instead of dynamoDbClient?
+
+
+
+        i again changed everything, i will use dynamoDbClient.
+
+        but i will use
+
+        const dynamoDbClient = new DynamoDBClient({
+  region: 'eu-north-1',
+  credentials: {
+    accessKeyId: 'AKIA4RCAN6X3KFBVGCR6',
+    secretAccessKey: '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',
+  },
+});
