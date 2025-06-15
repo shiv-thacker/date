@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {jwtDecode} from 'jwt-decode';
 import {createContext, useEffect, useState} from 'react';
-import "core-js/stable/atob";
+import 'core-js/stable/atob';
 
 const AuthContext = createContext();
 
@@ -41,5 +41,4 @@ const AuthProvider = ({children}) => {
   );
 };
 
-
-export {AuthContext,AuthProvider}
+export {AuthContext, AuthProvider};

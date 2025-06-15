@@ -8,7 +8,7 @@ import {
   Image,
   Alert,
 } from 'react-native';
-import React, {useState} from 'react';
+import React, {useState, useContext} from 'react';
 import Ionicons from '@react-native-vector-icons/ionicons';
 import {AuthContext} from '../AuthContext';
 import {useNavigation} from '@react-navigation/native';

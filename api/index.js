@@ -210,7 +210,7 @@ app.get('/matches', async (req, res) => {
     ].map(id => ({S: id}));
 
     const scanParams = {
-      TableName: 'users',
+      TableName: 'usercollection',
       FilterExpression:
         'userId <> :currentUserId AND (contains(:genderPref,gender)) AND NOT contains(:excludedIds,userId)',
       ExpressionAttributeValues: {
